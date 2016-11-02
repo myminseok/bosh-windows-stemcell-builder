@@ -1,10 +1,13 @@
 try {
-  if(!(Test-Path -Path "C:\bosh" )){
-    mkdir "C:\bosh"
+  $DEST = "C:\bosh\lgpo"
+  if(!(Test-Path -Path $DEST )){
+    mkdir $DEST
   }
-  if(!(Test-Path -Path "C:\var\vcap\bosh\bin" )){
-    mkdir "C:\var\vcap\bosh\bin"
+  $BIN = "C:\bosh\lgpo\bin"
+  if(!(Test-Path -Path $BIN )){
+    mkdir $BIN
   }
+  $env:PATH="${env:PATH};$BIN"
 
   Add-Type -AssemblyName System.IO.Compression.FileSystem
   function Unzip
@@ -16,32 +19,26 @@ try {
     rm $zipfile
   }
 
-  Invoke-WebRequest "https://msdnshared.blob.core.windows.net/media/TNBlogsFS/prod.evol.blogs.technet.com/telligent.evolution.components.attachments/01/4062/00/00/03/65/94/11/LGPO.zip" -OutFile "C:\bosh\lgpo.zip"
-  if (-Not (Test-Path "C:\bosh\lgpo.zip")) {
+  $LGPO_URL = "https://msdnshared.blob.core.windows.net/media/2016/09/LGPOv2-PRE-RELEASE.zip"
+  Invoke-WebRequest $LGPO_URL -OutFile "$DEST\lgpo.zip"
+  if (-Not (Test-Path "$DEST\lgpo.zip")) {
     Write-Error "ERROR: could not download LGPO"
     Exit 1
   }
 
-  Unzip "C:\bosh\lgpo.zip" "C:\var\vcap\bosh\bin\"
-  if (-Not (Test-Path "C:\var\vcap\bosh\bin\LGPO.exe")) {
+  Unzip "$DEST\lgpo.zip" $BIN
+  if (-Not (Test-Path "$BIN\LGPO.exe")) {
     Write-Error "ERROR: could not extract LGPO"
     Exit 1
   }
 
-  Unzip "A:\policy-baseline.zip" "C:\bosh\"
-  if (-Not (Test-Path "C:\bosh\policy-baseline")) {
+  Unzip "A:\policy-baseline.zip" $DEST
+  if (-Not (Test-Path "$DEST\policy-baseline")) {
     Write-Error "ERROR: could not extract policy-baseline"
     Exit 1
   }
 
-  C:\var\vcap\bosh\bin\LGPO.exe /g C:\bosh\policy-baseline /v 2>&1 > C:\var\vcap\bosh\LGPO.log
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host $(Get-Content C:\var\vcap\bosh\LGPO.log)
-    Write-Error "Error: LGPO exited with code ${LASTEXITCODE}"
-    Exit $LASTEXITCODE
-  }
-  Write-Host $(Get-Content C:\var\vcap\bosh\LGPO.log)
-
+  echo "$BIN\LGPO.exe /g $DEST\policy-baseline /v 2>&1 > $DEST\LGPO.log" > "$BIN\apply-policies.bat"
 } catch {
   Write-Error $_.Exception.Message
   Exit 1
